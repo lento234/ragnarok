@@ -20,7 +20,6 @@ plot_flag = True
 plot_step = 10
 
 def plot(variable):
-    #pygr.plot(variable,ylim=(0.8,1.8),accelerate=True)
     pygr.plot(variable,ylim=(-0.15,0.15),accelerate=True)
     
 # ------------------------------------------------------------
@@ -80,7 +79,6 @@ for t in range(1,Tmax+1):
         solver.f[1:,-1] = solver.f[[2,1],-1]
     
     # Step 2: Streaming / advection step: f'_i(x) <- f^n_i(x-c_i)
-    #solver.stream_python() # periodic 
     solver.stream() # non-periodic
 
     # if apply_bc:

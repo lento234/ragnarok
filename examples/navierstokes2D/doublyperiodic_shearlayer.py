@@ -28,11 +28,6 @@ from numba import vectorize, jit
 
 import ragnarok
 
-plotFlag = True
-
-# Plotting
-if plotFlag:
-    from gr import pygr
 
 # ------------------------------------------------------------
 # Functions
@@ -61,12 +56,14 @@ def doublyperiodicshearlayer():
 Re  = 30000
 T   = 50000
 U   = 0.1
-Nx  = 200
-Ny  = 200
+Nx  = 100
+Ny  = 100
 
 # Flags
 apply_bc = True
 plot_step = 100
+plotSave = False
+plotFlag = True
 
 # ------------------------------------------------------------
 # Initialize solver
@@ -94,17 +91,22 @@ solver.initialize(ux=ux,uy=uy)
 # ------------------------------------------------------------
 # plotting
 
-def plotsurface(variable):
-    pygr.surface(variable,
-        rotation=0, tilt=90,
-        xlabel='x',
-        ylabel='y',
-        title='\omega_z',
-        zlim=(-0.0025,0.0025),
-        accelerate=True)
+def plotcontourf(i):
+    plt.figure('plot')
+    plt.clf()
+    vortz = curl(solver.u)
+    levels = np.linspace(-0.25,0.25,64)
+    plt.contourf(x,y,-vortz/(1.0/Nx),levels,cmap='RdBu',extend='both')
+    plt.axis('scaled')
+    plt.axis([0,Nx,0,Ny])
+    if plotSave:
+        plt.savefig('output/image_%04d.png' % i)
+    else:
+        plt.pause(0.1)
 
-vortz = curl(solver.u)
-if plotFlag: plotsurface(vortz)
+k = 0
+if plotFlag:
+    plotcontourf(0)
 
 # ------------------------------------------------------------
 # Time stepping 
@@ -118,11 +120,10 @@ for t in range(T):
 
     # Plot
     if plotFlag and t % plot_step == 0:
-        vortz = curl(solver.u)
-        plotsurface(vortz)
+        k += 1
+        plotcontourf(k)
 
     # Step 1: Streaming / advection step: f'_i(x) <- f^n_i(x-c_i)
-    #solver.stream_python()
     solver.stream()
     
     # Step 2: Apply boundary condition
@@ -130,7 +131,7 @@ for t in range(T):
     
     # Step 3: Relaxation / collision step: f^{n+1}_i(x) <- f'_i + \alpha\beta [f^{eq}'_i(x,t) - f'_i(x,t)]
     solver.relax()
-
+    
     if solver.rho.min() <= 0.:
         print('Density is negative!')
         break

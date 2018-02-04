@@ -1,5 +1,5 @@
 """
-1D Advection-Diffusion 
+1D Hyperbolic tangent
 
 """
 

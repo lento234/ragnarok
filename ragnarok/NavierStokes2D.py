@@ -49,10 +49,11 @@ def _calc_P(D,Q,Nx,Ny,f,c,rho,P):
                         P[nx,ny,i,j] += f[q,i,j]*c[nx,q]*c[ny,q]  
                     #P[nx,ny,i,j] /= rho[i,j]
 
+
 @njit(parallel=True)
-def _relax_new(Q,W,c,Nx,Ny,alpha,beta,f,rho,u,force):
-    for i in prange(Nx):
-        for j in prange(Ny):
+def _relax(Q,W,c,Nx,Ny,alpha,beta,f,rho,u,force):
+    for i in range(Nx):
+        for j in range(Ny):
 
             # Velocity
             ux = u[0,i,j]
@@ -66,20 +67,20 @@ def _relax_new(Q,W,c,Nx,Ny,alpha,beta,f,rho,u,force):
             Bx = (2.0*ux + uxsqrt)/(1.0-ux)
             By = (2.0*uy + uysqrt)/(1.0-uy)
 
-            # Feqf coefficients
-            ux = ux + force[0]/rho[i,j]
-            uy = uy + force[1]/rho[i,j]
-            uxsqrt = math.sqrt(1.0 + 3.0*ux**2)
-            uysqrt = math.sqrt(1.0 + 3.0*uy**2)
-            Axf = 2.0 - uxsqrt
-            Ayf = 2.0 - uysqrt
-            Bxf = (2.0*ux + uxsqrt)/(1.0-ux)
-            Byf = (2.0*uy + uysqrt)/(1.0-uy)
+            # # Feqf coefficients
+            # ux = ux + force[0]/rho[i,j]
+            # uy = uy + force[1]/rho[i,j]
+            # uxsqrt = math.sqrt(1.0 + 3.0*ux**2)
+            # uysqrt = math.sqrt(1.0 + 3.0*uy**2)
+            # Axf = 2.0 - uxsqrt
+            # Ayf = 2.0 - uysqrt
+            # Bxf = (2.0*ux + uxsqrt)/(1.0-ux)
+            # Byf = (2.0*uy + uysqrt)/(1.0-uy)
 
             for q in range(Q):
                 feq = rho[i,j]*W[q]*Ax*Ay*(Bx**c[0,q])*(By**c[1,q])
-                feqf = rho[i,j]*W[q]*Axf*Ayf*(Bxf**c[0,q])*(Byf**c[1,q])
-                f[q,i,j] += alpha*beta*(feq-f[q,i,j]) + (feqf - feq)
+                #feqf = rho[i,j]*W[q]*Axf*Ayf*(Bxf**c[0,q])*(Byf**c[1,q])
+                f[q,i,j] += alpha*beta*(feq-f[q,i,j]) # + (feqf - feq)
         
 
 @njit(parallel=True)
@@ -103,26 +104,6 @@ def _stream(Q,Nx,Ny,f,bs,c):
                 f[q,itarget,jtarget] = f[q,i,j]
 
 
-@njit(parallel=True)
-def _H(H,Q,W,Nx,Ny,f):
-    for i in prange(Nx):
-        for j in prange(Ny):
-            H[i,j] = 0.0
-            for q in range(Q):
-                H[i,j] += f[q,i,j]*math.log(f[q,i,j]/W[q])
-
-@njit(parallel=True)
-def _M(D,Q,Nx,Ny,f,c,rho,M):
-    for i in prange(Nx):
-        for j in prange(Ny):
-            for nx in range(D+1):
-                for ny in range(D+1):
-                    M[nx,ny,i,j] = 0.0
-                    for q in range(Q):
-                        M[nx,ny,i,j] += f[q,i,j]*(c[0,q]**nx)*(c[1,q]**ny)
-                    #M[nx,ny,i,j] /= rho[i,j]
-                    if nx>0 or ny>0:
-                        M[nx,ny,i,j] /= M[0,0,i,j]
                         
 class NavierStokes2D(object):
     """
@@ -185,7 +166,7 @@ class NavierStokes2D(object):
         
         # Initialize population
         self._f = np.zeros((self.Q,self.Nx+2*self.buffersize,self.Ny+2*self.buffersize))
-        #self.feq = np.zeros((self.Q,self.Nx,self.Ny))
+        self.feq = np.zeros((self.Q,self.Nx,self.Ny))
         #self._feqDu = np.zeros((self.Q,self.Nx,self.Ny))
         #self.ftemp = np.zeros((self.Q,self.Nx+2*self.buffersize,self.Ny+2*self.buffersize))
         self.rho = np.ones((self.Nx,self.Ny))
@@ -198,125 +179,12 @@ class NavierStokes2D(object):
         self.M = np.zeros((self.D+1,self.D+1,self.Nx,self.Ny))
 
         # Assert 
-        #assert(U <= 0.1), 'U should be smaller than 0.1'
+        assert(U <= 0.1), 'U should be smaller than 0.1'
         assert(self.beta >= 0 and self.beta <= 1), '0 <= beta <= 1'
         
         print('nu = %f' % self.nu)
         print('beta = %f' % self.beta)
         print('omega = %f' % (self.alpha*self.beta))
-
-    @property
-    def f(self):
-        return self._f[:,self.buffersize:-self.buffersize,self.buffersize:-self.buffersize]
-
-    @property
-    def _rho(self):
-        return self.M[0,0]
-    
-    @property
-    def _ux(self):
-        return self.M[1,0]
-
-    @property
-    def _uy(self):
-        return self.M[0,1]
-
-    @property
-    def _T(self):
-        return self.M[2,0] + self.M[0,2]
-
-    @property
-    def _N(self):
-        return self.M[2,0] - self.M[0,2]
-
-    @property
-    def _Pixy(self):
-        return self.M[1,1]
-
-    @property
-    def _Qxyy(self):
-        return self.M[1,2]
-
-    @property
-    def _Qyxx(self):
-        return self.M[2,1]
-
-    @property
-    def _A(self):
-        return self.M[2,2]
-
-    @property
-    def _Pixy_t(self):
-        return self._Pixy - self._ux*self._uy
-
-    @property
-    def _N_t(self):
-        return self._N - (self._ux**2 - self._uy**2)
-
-    @property
-    def _T_t(self):
-        return self._T - (self._ux**2 + self._uy**2)
-
-    @property
-    def _Qxyy_t(self):
-        return self._Qxyy - (2.0*self._uy*self._Pixy_t + self._ux*(-0.5*self._N_t + 0.5*self._T_t + self._uy**2))
-
-    @property
-    def _Qyxx_t(self):
-        return self._Qyxx - (2.0*self._ux*self._Pixy_t + self._uy*( 0.5*self._N_t + 0.5*self._T_t + self._ux**2))
-
-    @property
-    def _A_t(self):
-        return self._A - (  2.0*(self._ux*self._Qxyy_t + self._uy*self._Qyxx_t)
-                          + 4.0*self._ux*self._uy*self._Pixy_t
-                          + 0.5*(self._ux**2 + self._uy**2)*self._T_t
-                          - 0.5*(self._ux**2 - self._uy**2)*self._N_t
-                          + (self._ux**2)*(self._uy**2) )
-
-
-
-    def calc_f_from_M(self):
-        '''
-        (0,0)   <-- 0: centre 
-        (1,0)   <-- 1: right
-        (0,1)   <-- 2: top
-        (-1,0)  <-- 3: left
-        (0,-1)  <-- 4: bottom
-
-        (1,1)   <-- 5: top-right
-        (-1,1)  <-- 6: top-left
-        (-1,-1) <-- 7: bottom-left
-        (1,-1)  <-- 8: bottom-right
-        '''
-        rho = self._rho
-        ux = self._ux
-        uy = self._uy
-        T = self._T
-        N = self._N
-        Pixy = self._Pixy
-        Qxyy = self._Qxyy
-        Qyxx = self._Qyxx
-        A = self._A
-
-        self.f[0][:,:] = rho*(1.0 - T + A) # f_(0,0)
-
-        self.f[1][:,:] = 0.5*rho*(0.5*(T+N) + (1.0)*ux - (1.0)*Qxyy - A) # f_(1,0)
-        self.f[3][:,:] = 0.5*rho*(0.5*(T+N) + (-1.0)*ux - (-1.0)*Qxyy - A) # f_(-1,0)
-
-        self.f[2][:,:] = 0.5*rho*(0.5*(T-N) + (1.0)*uy - (1.0)*Qyxx - A) # f_(0,1)
-        self.f[4][:,:] = 0.5*rho*(0.5*(T-N) + (-1.0)*uy - (-1.0)*Qyxx - A) # f_(0,-1)
-
-        self.f[5][:,:] = 0.25*rho*(A + (1.0*1.0)*Pixy + (1.0)*Qxyy + (1.0)*Qyxx) # f_(1,1)
-        self.f[6][:,:] = 0.25*rho*(A + (-1.0*1.0)*Pixy + (-1.0)*Qxyy + (1.0)*Qyxx) # f_(-1,1)
-        self.f[7][:,:] = 0.25*rho*(A + (-1.0*-1.0)*Pixy + (-1.0)*Qxyy + (-1.0)*Qyxx) # f_(-1,-1)
-        self.f[8][:,:] = 0.25*rho*(A + (1.0*-1.0)*Pixy + (1.0)*Qxyy + (-1.0)*Qyxx) # f_(1,-1)
-
-
-    def calc_H(self):
-        _H(self.H,self.Q,self.W,self.Nx,self.Ny,self.f)
-  
-    def calc_M(self):
-        _M(self.D,self.Q,self.Nx,self.Ny,self.f,self.c,self.rho,self.M)
 
     def initialize(self,rho=None,ux=None,uy=None):
         ''' Initialize the density, velocity and population '''
@@ -338,6 +206,7 @@ class NavierStokes2D(object):
 
         # Correct macroscopic 
         self.correct_macroscopic() # redundant probably
+        #self.correct_macroscopic_python()
 
     def correct_feq(self):
         _correct_feq(self.Q,self.W,self.c,self.Nx,self.Ny,self.feq,self.rho,self.u)
@@ -363,8 +232,8 @@ class NavierStokes2D(object):
             self.force[:] = force
     
         # Calculate Delta_u due to the external force
-        _relax_new(self.Q,self.W,self.c,self.Nx,self.Ny,self.alpha,self.beta,self.f,self.rho,self.u,self.force)
-
+        _relax(self.Q,self.W,self.c,self.Nx,self.Ny,self.alpha,self.beta,self.f,self.rho,self.u,self.force)
+    
 
     def calc_feq_python(self,rho,u):
         '''
@@ -385,6 +254,16 @@ class NavierStokes2D(object):
         for q in range(self.Q):
             feq[q] = rho*self.W[q]*Ax*Ay*(Bx**self.c[0,q])*(By**self.c[1,q])
         return feq
+
+        # cu = 2.0 * (u[0]*self.c[0].reshape(-1,1,1) + u[1]*self.c[1].reshape(-1,1,1))
+        # usqr = 3./2.*(u[0]**2 + u[1]**2)
+        # if type(rho) == np.ndarray or type(u) == np.ndarray:
+        #     feq = np.zeros((self.Q,self.Nx,self.Ny))
+        # else:
+        #     feq = np.zeros(self.Q)
+        # for q in range(self.Q):
+        #     feq[q] = rho*self.W[q]*(1.0 + cu[q]+0.5*cu[q]**2 - usqr)
+        # return feq
 
 
     def apply_equilibrium(self,bcdict):
@@ -496,11 +375,23 @@ class NavierStokes2D(object):
 
     # ------------------------------------------   
 
+    def correct_macroscopic_python(self):
+        '''update macroscpic properties: rho, ux, uy, P'''
+        self.rho[:,:] = np.sum(self.f,axis=0)
+        self.u[0,:,:] = np.sum(self.f * np.reshape(self.c[0], (self.Q,1,1)), axis=0) / self.rho
+        self.u[1,:,:] = np.sum(self.f * np.reshape(self.c[1], (self.Q,1,1)), axis=0) / self.rho
+        
+
     def correct_feq_python(self):
         A = [(2.0 - np.sqrt(1.0 + 3.0*self.u[n]**2)) for n in range(self.D)]
         B = [((2.0*self.u[n] + np.sqrt(1.0 + 3.0*self.u[n]**2))/(1.0-self.u[n])) for n in range(self.D)]
         for q in range(self.Q):
-            self.feq[q] = self.rho*self.W[q]*A[0]*A[1]*B[0]**self.c[0,q]*B[1]**self.c[1,q]
+           self.feq[q] = self.rho*self.W[q]*A[0]*A[1]*(B[0]**self.c[0,q])*(B[1]**self.c[1,q])
+        ####
+        # cu = 2.0 * (self.u[0]*self.c[0].reshape(-1,1,1) + self.u[1]*self.c[1].reshape(-1,1,1))
+        # usqr = 3./2.*(self.u[0]**2 + self.u[1]**2)
+        # for q in range(self.Q):
+        #     self.feq[q] = self.rho*self.W[q]*(1.0 + cu[q]+0.5*cu[q]**2-usqr)
 
     def relax_python(self):
         '''f^{n+1}_i(x) <- f'_i + 2\beta [f^{eq}'_i(x,t) - f'_i(x,t)]'''
@@ -531,88 +422,149 @@ class NavierStokes2D(object):
     def info(self):
         print(self.__doc__)
 
+    # Properties
+    @property
+    def f(self):
+        return self._f[:,self.buffersize:-self.buffersize,self.buffersize:-self.buffersize]
 
 
 
-'''
+
+
+
+# Work in progress part
+"""
+
 @njit(parallel=True)
-def _relax(Q,Nx,Ny,alpha,beta,f,feq):
-    for q in range(Q):
-        for i in prange(Nx):
-            for j in prange(Ny):
-                f[q][i,j] += alpha*beta*(feq[q,i,j]-f[q,i,j])
-
-@njit(parallel=True)
-def _correct_feq(Q,W,c,Nx,Ny,feq,rho,u):
+def _H(H,Q,W,Nx,Ny,f):
     for i in prange(Nx):
         for j in prange(Ny):
-            ux = u[0,i,j]
-            uy = u[1,i,j]
-            uxsqrt = math.sqrt(1.0 + 3.0*ux**2)
-            uysqrt = math.sqrt(1.0 + 3.0*uy**2)
-            Ax = 2.0 - uxsqrt
-            Ay = 2.0 - uysqrt
-            Bx = (2.0*ux + uxsqrt)/(1.0-ux)
-            By = (2.0*uy + uysqrt)/(1.0-uy)
+            H[i,j] = 0.0
             for q in range(Q):
-                feq[q][i,j] = rho[i,j]*W[q]*Ax*Ay*(Bx**c[0,q])*(By**c[1,q])
-'''
+                H[i,j] += f[q,i,j]*math.log(f[q,i,j]/W[q])
 
-# @njit(parallel=True)
-# def _stream(Q,Nx,Ny,ftemp,buffersize,f,c):
-#     for q in range(1,Q):
-#         for i in prange(Nx):
-#             for j in prange(Ny):
-#                 itarget = (i+c[0,q]+buffersize)
-#                 jtarget = (j+c[1,q]+buffersize)
-#                 ftemp[q,itarget,jtarget] = f[q,i,j]
-#         for i in prange(Nx):
-#             for j in prange(Ny):
-#                 f[q,i,j] = ftemp[q,i+buffersize,j+buffersize]
-
-
-# @njit(parallel=True)
-# def _stream(Q,Nx,Ny,f,bs,c):
-#     for q in range(1,Q):
-#         for i in prange(Nx):
-#             for j in prange(Ny):
-#                 itarget = (i+c[0,q]+buffersize)
-#                 jtarget = (j+c[1,q]+buffersize)
-#                 ftemp[q,itarget,jtarget] = f[q,i,j]
-#         for i in prange(Nx):
-#             for j in prange(Ny):
-#                 f[q,i,j] = ftemp[q,i+buffersize,j+buffersize]
+@njit(parallel=True)
+def _M(D,Q,Nx,Ny,f,c,rho,M):
+    for i in prange(Nx):
+        for j in prange(Ny):
+            for nx in range(D+1):
+                for ny in range(D+1):
+                    M[nx,ny,i,j] = 0.0
+                    for q in range(Q):
+                        M[nx,ny,i,j] += f[q,i,j]*(c[0,q]**nx)*(c[1,q]**ny)
+                    #M[nx,ny,i,j] /= rho[i,j]
+                    if nx>0 or ny>0:
+                        M[nx,ny,i,j] /= M[0,0,i,j]
 
 
-# def calc_alpha(self):
-#     ''' Calculate alpha '''
 
-#     feq = self.calc_feq_python(self.rho,self.u)
+    def calc_H(self):
+        _H(self.H,self.Q,self.W,self.Nx,self.Ny,self.f)
+  
+    def calc_M(self):
+        _M(self.D,self.Q,self.Nx,self.Ny,self.f,self.c,self.rho,self.M)
 
-#     self.alphaMax = np.zeros((self.Nx,self.Ny))
 
-#     for q in range(self.Q):
-#         Delta = feq[q] - self.f[q] + np.spacing(10)
-#         self.alphaMax = np.max((self.alphaMax,-self.f[q]/Delta),axis=0)
+    def calc_f_from_M(self):
+        '''
+        (0,0)   <-- 0: centre 
+        (1,0)   <-- 1: right
+        (0,1)   <-- 2: top
+        (-1,0)  <-- 3: left
+        (0,-1)  <-- 4: bottom
 
-#     self.alpha = 2.0*np.ones((self.Nx,self.Ny))
+        (1,1)   <-- 5: top-right
+        (-1,1)  <-- 6: top-left
+        (-1,-1) <-- 7: bottom-left
+        (1,-1)  <-- 8: bottom-right
+        '''
+        rho = self._rho
+        ux = self._ux
+        uy = self._uy
+        T = self._T
+        N = self._N
+        Pixy = self._Pixy
+        Qxyy = self._Qxyy
+        Qyxx = self._Qyxx
+        A = self._A
 
-#     for i in range(1):
+        self.f[0][:,:] = rho*(1.0 - T + A) # f_(0,0)
+
+        self.f[1][:,:] = 0.5*rho*(0.5*(T+N) + (1.0)*ux - (1.0)*Qxyy - A) # f_(1,0)
+        self.f[3][:,:] = 0.5*rho*(0.5*(T+N) + (-1.0)*ux - (-1.0)*Qxyy - A) # f_(-1,0)
+
+        self.f[2][:,:] = 0.5*rho*(0.5*(T-N) + (1.0)*uy - (1.0)*Qyxx - A) # f_(0,1)
+        self.f[4][:,:] = 0.5*rho*(0.5*(T-N) + (-1.0)*uy - (-1.0)*Qyxx - A) # f_(0,-1)
+
+        self.f[5][:,:] = 0.25*rho*(A + (1.0*1.0)*Pixy + (1.0)*Qxyy + (1.0)*Qyxx) # f_(1,1)
+        self.f[6][:,:] = 0.25*rho*(A + (-1.0*1.0)*Pixy + (-1.0)*Qxyy + (1.0)*Qyxx) # f_(-1,1)
+        self.f[7][:,:] = 0.25*rho*(A + (-1.0*-1.0)*Pixy + (-1.0)*Qxyy + (-1.0)*Qyxx) # f_(-1,-1)
+        self.f[8][:,:] = 0.25*rho*(A + (1.0*-1.0)*Pixy + (1.0)*Qxyy + (-1.0)*Qyxx) # f_(1,-1)
+
+
+
+    @property
+    def _T(self):
+        return self.M[2,0] + self.M[0,2]
+
+    @property
+    def _N(self):
+        return self.M[2,0] - self.M[0,2]
+
+    @property
+    def _Pixy(self):
+        return self.M[1,1]
+
+    @property
+    def _Qxyy(self):
+        return self.M[1,2]
+
+    @property
+    def _Qyxx(self):
+        return self.M[2,1]
+
+    @property
+    def _A(self):
+        return self.M[2,2]
+
+    @property
+    def _Pixy_t(self):
+        return self._Pixy - self._ux*self._uy
+
+    @property
+    def _N_t(self):
+        return self._N - (self._ux**2 - self._uy**2)
+
+    @property
+    def _T_t(self):
+        return self._T - (self._ux**2 + self._uy**2)
+
+    @property
+    def _Qxyy_t(self):
+        return self._Qxyy - (2.0*self._uy*self._Pixy_t + self._ux*(-0.5*self._N_t + 0.5*self._T_t + self._uy**2))
+
+    @property
+    def _Qyxx_t(self):
+        return self._Qyxx - (2.0*self._ux*self._Pixy_t + self._uy*( 0.5*self._N_t + 0.5*self._T_t + self._ux**2))
+
+    @property
+    def _A_t(self):
+        return self._A - (  2.0*(self._ux*self._Qxyy_t + self._uy*self._Qyxx_t)
+                          + 4.0*self._ux*self._uy*self._Pixy_t
+                          + 0.5*(self._ux**2 + self._uy**2)*self._T_t
+                          - 0.5*(self._ux**2 - self._uy**2)*self._N_t
+                          + (self._ux**2)*(self._uy**2) )
+
+    @property
+    def _rho(self):
+        return self.M[0,0]
     
-#         self.H = np.zeros((self.Nx,self.Ny)) + np.spacing(1)
-#         self.Hprime = np.zeros((self.Nx,self.Ny)) + np.spacing(1)
+    @property
+    def _ux(self):
+        return self.M[1,0]
 
-#         for q in range(self.Q):
-#             Delta = feq[q] - self.f[q]
-#             self.H += self.f[q] * np.log(self.f[q]/self.W[q])
-#             self.Hprime += Delta * np.log((self.f[q]+self.alpha*Delta)/self.W[q])
-    
-#         Dalpha = self.H/self.Hprime
-    
-#         if np.abs(Dalpha).max() < 1e-4:
-#             break
-    
-#         self.alpha += Dalpha
+    @property
+    def _uy(self):
+        return self.M[0,1]
 
-
-# _H(H_f,Q,W,Nx,Ny,f)
+"""

@@ -8,28 +8,15 @@
 
 from __future__ import absolute_import,division, print_function
 
-#from os import environ
-#environ['MPLBACKEND'] = 'module://gr.matplotlib.backend_gr'
-#environ['GKS_WSTYPE'] = 'cairox11'
-
 import time
 import numpy as np
 import math
+import os
 import matplotlib.pyplot as plt
-#plt.ion()
 from numba import vectorize, jit
-import pyevtk
 import ragnarok
 
-#import gr
-#gr.inline('mov')
-
-plotFlag = True
-
-# Plotting
-if plotFlag:
-    from gr import pygr
-
+plt.ioff()
 # ------------------------------------------------------------
 # Functions
 @vectorize(['float64(float64,float64)'],target='parallel')
@@ -44,15 +31,18 @@ def curl(u):
 
 # ------------------------------------------------------------
 # Parameters
-Re  = 1000
+Re  = 100
 T   = 500000
-U   = 0.1#0.05
-Nx  = 250
-Ny  = 250
+U   = 0.1
+Nx  = 100
+Ny  = 100
 
 # Flags
 apply_bc = True
 plot_step = 500
+
+plotFlag = True
+plotSave = False
 
 # ------------------------------------------------------------
 # Initialize solver
@@ -82,52 +72,40 @@ equilibriumbcdict = {'top': dict(rho=1.0, u=(0.1,0.0))}
 # ------------------------------------------------------------
 # plotting
 
-# def plotsurface(variable):
-#          pygr.surface(x.T[0],y[0],variable,
-#          rotation=0, tilt=90,#colormap=42,
-#          xlabel='x',
-#          ylabel='y',
-#          title='unorm',
-#          zlim=(0, 0.01),
-#          accelerate=True)
-
-#vortz = curl(solver.u)
-#unorm = calcnorm(ux,uy)
-#if plotFlag: plotsurface(vortz)
-#if plotFlag: plotsurface(unorm)
-
-def plotcontourf():
+def plotcontourf(i):
     plt.figure('plot')
     plt.clf()
     vortz = curl(solver.u)
-    #skip = 5
     levels = [-4,-3,-2,-1,0,1,2,3,4,5,6]
     plt.contourf(x,y,-vortz/(0.1*(1.0/Nx)),levels,cmap='jet',extend='both')
-    # plt.quiver(x[::skip,::skip],y[::skip,::skip],
-    #             ux[::skip,::skip],uy[::skip,::skip])
     plt.colorbar()
     plt.axis('scaled')
     plt.axis([0,Nx,0,Ny])
-    plt.show(block=False)
-    plt.pause(0.1)
+    if plotSave:
+        plt.savefig('output/image_%04d.png' % i)
+    #plt.pause(0.1)
 
-plotcontourf()
+k = 0
+if plotFlag: 
+    try:
+        os.mkdir('output')
+    except:
+        pass
+	plotcontourf(0)
 
 # ------------------------------------------------------------
 # Time stepping 
-k = 1
 for t in range(T):
     if t==1: # for JIT
         startTime = time.time()
-    
     # Print
     print('T = %d' % t)
 
     # Plot
     if plotFlag and t % plot_step == 0:
         k += 1
-        plotcontourf()
-    
+        plotcontourf(k)
+
     # Step 3: Streaming / advection step: f'_i(x) <- f^n_i(x-c_i)
     solver.stream()
     
@@ -145,7 +123,6 @@ for t in range(T):
     if solver.rho.min() <= 0.:
         print('Density is negative!')
         break
-
 
 # Done
 print('It took %g seconds.' % (time.time()-startTime))
