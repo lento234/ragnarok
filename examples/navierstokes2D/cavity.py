@@ -39,10 +39,10 @@ Ny  = 100
 
 # Flags
 apply_bc = True
-plot_step = 500
+plot_step = 10
 
 plotFlag = True
-plotSave = False
+plotSave = True
 
 # ------------------------------------------------------------
 # Initialize solver
@@ -77,12 +77,15 @@ def plotcontourf(i):
     plt.clf()
     vortz = curl(solver.u)
     levels = [-4,-3,-2,-1,0,1,2,3,4,5,6]
+    plt.title('Vorticity $\omega$, T = %05d' % i)
     plt.contourf(x,y,-vortz/(0.1*(1.0/Nx)),levels,cmap='jet',extend='both')
     plt.colorbar()
     plt.axis('scaled')
+    plt.xlabel('$x$')
+    plt.ylabel('$y$')
     plt.axis([0,Nx,0,Ny])
     if plotSave:
-        plt.savefig('output/image_%04d.png' % i)
+        plt.savefig('output/image_%05d.png' % i,dpi=300)
     #plt.pause(0.1)
 
 k = 0
@@ -91,7 +94,7 @@ if plotFlag:
         os.mkdir('output')
     except:
         pass
-	plotcontourf(0)
+    plotcontourf(0)
 
 # ------------------------------------------------------------
 # Time stepping 
