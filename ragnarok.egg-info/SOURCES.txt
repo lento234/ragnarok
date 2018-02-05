@@ -1,11 +1,8 @@
 MANIFEST.in
 README.md
 ragnarok/AdvectionDiffusion1D.py
-ragnarok/EntropicLBM2D.py
 ragnarok/NavierStokes1D.py
 ragnarok/NavierStokes2D.py
-ragnarok/NavierStokes2D_20171213.py
-ragnarok/NavierStokes2D_20171221.py
 ragnarok/__init__.py
 ragnarok.egg-info/PKG-INFO
 ragnarok.egg-info/SOURCES.txt
