@@ -14,9 +14,12 @@ import math
 import os
 import matplotlib.pyplot as plt
 from numba import vectorize, jit
+
+# Lattice Boltzmann solver
 import ragnarok
 
-plt.ioff()
+#plt.ioff()
+
 # ------------------------------------------------------------
 # Functions
 @vectorize(['float64(float64,float64)'],target='parallel')
@@ -31,15 +34,15 @@ def curl(u):
 
 # ------------------------------------------------------------
 # Parameters
-Re  = 100
-T   = 500000
+Re  = 1000
+T   = 200000
 U   = 0.1
-Nx  = 100
-Ny  = 100
+Nx  = 250
+Ny  = 250
 
 # Flags
 apply_bc = True
-plot_step = 10
+plot_step = 100
 
 plotFlag = True
 plotSave = True
@@ -72,6 +75,9 @@ equilibriumbcdict = {'top': dict(rho=1.0, u=(0.1,0.0))}
 # ------------------------------------------------------------
 # plotting
 
+uxmean = np.zeros(ux.shape)
+uymean = np.zeros(uy.shape)
+
 def plotcontourf(i):
     plt.figure('plot')
     plt.clf()
@@ -88,6 +94,7 @@ def plotcontourf(i):
         plt.savefig('output/image_%05d.png' % i,dpi=300)
     #plt.pause(0.1)
 
+
 k = 0
 if plotFlag: 
     try:
@@ -95,6 +102,8 @@ if plotFlag:
     except:
         pass
     plotcontourf(0)
+
+
 
 # ------------------------------------------------------------
 # Time stepping 

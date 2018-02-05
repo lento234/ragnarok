@@ -1,20 +1,7 @@
 """
 2D Navier-Stokes example
 
-
-.. math::
-    
-    \partial_t\rho  + \partial_{\alpha}\left( \rho\ u_{\alpha} \right) = 0
-    ??? \partial_t\left( \rho\ u_{\alpha} \right) + \partial_{\alpha}\left( P_{\alpha \beta} - 2\nu \rho \partial_{\beta}u_\alpha \right) = 0
-
-with
-
-.. math::
-
-    \nu = \tau c_s^2
-
-Options:
-    - Double Periodic shear layer
+   - Double Periodic shear layer
 
 """
 

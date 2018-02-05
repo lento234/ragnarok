@@ -1,19 +1,6 @@
 """
 2D Navier-Stokes example
 
-
-.. math::
-    
-    \partial_t\rho  + \partial_{\alpha}\left( \rho\ u_{\alpha} \right) = 0
-    ??? \partial_t\left( \rho\ u_{\alpha} \right) + \partial_{\alpha}\left( P_{\alpha \beta} - 2\nu \rho \partial_{\beta}u_\alpha \right) = 0
-
-with
-
-.. math::
-
-    \nu = \tau c_s^2
-
-Options:
     - Taylor green vortex
 
 """
@@ -26,8 +13,8 @@ import math
 import matplotlib.pyplot as plt
 from numba import vectorize, jit
 
+# Lattice boltzmann solver
 import ragnarok
-
 
 # ------------------------------------------------------------
 # Functions
@@ -43,7 +30,7 @@ def curl(u):
 
 def taylorgreen(t=0.0):
     lambdax = lambday = 1.0
-    Vmax = 0.1
+    Vmax = 0.05
     Ma = Vmax / cs
 
     Kx = 2.0*np.pi/(lambdax*Nx)
@@ -52,21 +39,21 @@ def taylorgreen(t=0.0):
 
     rho = 1.0 - (Ma**2/(2.0*Ksquared))*(Ky*Ky*np.cos(2.0*Kx*x) + Kx*Kx*np.cos(2.0*Ky*y))
     ux = - (Vmax * Ky / np.sqrt(Ksquared)) * np.exp(-nu * Ksquared * t) * np.sin(Ky*y) * np.cos(Kx * x)
-    uy = - (Vmax * Kx / np.sqrt(Ksquared)) * np.exp(-nu * Ksquared * t) * np.sin(Kx*x) * np.cos(Ky * y)
+    uy = (Vmax * Kx / np.sqrt(Ksquared)) * np.exp(-nu * Ksquared * t) * np.sin(Kx*x) * np.cos(Ky * y)
     
     return rho, ux, uy
 
 # ------------------------------------------------------------
 # Parameters
-Re  = 1000
-T   = 50000
+Re  = 5000
+T   = 10000
 U   = 0.1
 Nx  = 100
 Ny  = 100
 
 # Flags
 apply_bc = True
-plot_step = 1
+plot_step = 1000
 plotSave = False
 plotFlag = True
 
@@ -99,34 +86,31 @@ solver.initialize(rho=rho0,ux=ux0,uy=uy0)
 # ------------------------------------------------------------
 # plotting
 
-def plotcontourf(i):
+def plot(i):
     plt.figure('plot')
     plt.clf()
     vortz = curl(solver.u)
-    levels = np.linspace(-0.001,0.001,64)
+    levels = np.linspace(-0.05,0.05,11)
     plt.title('T = %d' % i)
-    #rho,ux,uy = taylorgreen(i)
-    plt.contourf(x,y,solver.u[0],levels,cmap='RdBu',extend='both')
-    #skip=5
-    #plt.quiver(x[::skip,::skip],y[::skip,::skip],ux[::skip,::skip],uy[::skip,::skip])
+    plt.contourf(x,y,vortz/0.05,levels,cmap='RdBu',extend='both')
+    plt.colorbar()
+    skip=5
+    plt.quiver(x[::skip,::skip],y[::skip,::skip],ux[::skip,::skip],uy[::skip,::skip],scale=0.7)
     plt.axis('scaled')
     plt.axis([0,Nx,0,Ny])
     plt.xlabel('$x$')
     plt.ylabel('$y$')
-    plt.colorbar()
-    if plotSave:
-        plt.savefig('output/image_%04d.png' % i)
-    else:
-        plt.pause(0.1)
+    plt.pause(0.1)
 
 k = 0
 if plotFlag:
-    plotcontourf(0)
+    plot(0)
+    plt.savefig('taylor_green_%04d.png' % 0, dpi=400)
 
 # ------------------------------------------------------------
 # Time stepping 
 
-for t in range(T):
+for t in range(T+1):
     if t==1: # for JIT
         startTime = time.time()
     
@@ -135,26 +119,21 @@ for t in range(T):
 
     # Plot
     if plotFlag and t % plot_step == 0:
-        k += 1
-        plotcontourf(k)
+        plot(t)
+        plt.savefig('taylor_green_%04d.png' % t, dpi=400)
 
     # Step 1: Streaming / advection step: f'_i(x) <- f^n_i(x-c_i)
-    #solver.stream_python()
     solver.stream()
     
     # Step 2: Apply boundary condition
     solver.apply_periodic()
     
     # Step 3: Relaxation / collision step: f^{n+1}_i(x) <- f'_i + \alpha\beta [f^{eq}'_i(x,t) - f'_i(x,t)]
-    #solver.correct_macroscopic_python()
-    #solver.correct_feq_python()
     solver.relax()
-    #solver.relax_python()
 
     if solver.rho.min() <= 0.:
         print('Density is negative!')
         break
-
 
 # Done
 print('It took %g seconds.' % (time.time()-startTime))

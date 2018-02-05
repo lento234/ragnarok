@@ -33,7 +33,7 @@ def _calc_u(D,Q,Nx,Ny,f,c,rho,u):
     for i in prange(Nx):
         for j in prange(Ny):
             for n in range(D):
-                u[n,i,j] = 0.0 #0.5*force[n] # rho*du / 2
+                u[n,i,j] = 0.0
                 for q in range(Q):
                     u[n,i,j] += f[q,i,j]*c[n,q]
                 u[n,i,j] /= rho[i,j]
@@ -52,8 +52,8 @@ def _calc_P(D,Q,Nx,Ny,f,c,rho,P):
 
 @njit(parallel=True)
 def _relax(Q,W,c,Nx,Ny,alpha,beta,f,rho,u,force):
-    for i in range(Nx):
-        for j in range(Ny):
+    for i in prange(Nx):
+        for j in prange(Ny):
 
             # Velocity
             ux = u[0,i,j]
@@ -67,20 +67,20 @@ def _relax(Q,W,c,Nx,Ny,alpha,beta,f,rho,u,force):
             Bx = (2.0*ux + uxsqrt)/(1.0-ux)
             By = (2.0*uy + uysqrt)/(1.0-uy)
 
-            # # Feqf coefficients
-            # ux = ux + force[0]/rho[i,j]
-            # uy = uy + force[1]/rho[i,j]
-            # uxsqrt = math.sqrt(1.0 + 3.0*ux**2)
-            # uysqrt = math.sqrt(1.0 + 3.0*uy**2)
-            # Axf = 2.0 - uxsqrt
-            # Ayf = 2.0 - uysqrt
-            # Bxf = (2.0*ux + uxsqrt)/(1.0-ux)
-            # Byf = (2.0*uy + uysqrt)/(1.0-uy)
+            # Feqf coefficients
+            ux = ux + force[0]/rho[i,j]
+            uy = uy + force[1]/rho[i,j]
+            uxsqrt = math.sqrt(1.0 + 3.0*ux**2)
+            uysqrt = math.sqrt(1.0 + 3.0*uy**2)
+            Axf = 2.0 - uxsqrt
+            Ayf = 2.0 - uysqrt
+            Bxf = (2.0*ux + uxsqrt)/(1.0-ux)
+            Byf = (2.0*uy + uysqrt)/(1.0-uy)
 
             for q in range(Q):
                 feq = rho[i,j]*W[q]*Ax*Ay*(Bx**c[0,q])*(By**c[1,q])
-                #feqf = rho[i,j]*W[q]*Axf*Ayf*(Bxf**c[0,q])*(Byf**c[1,q])
-                f[q,i,j] += alpha*beta*(feq-f[q,i,j]) # + (feqf - feq)
+                feqf = rho[i,j]*W[q]*Axf*Ayf*(Bxf**c[0,q])*(Byf**c[1,q])
+                f[q,i,j] += alpha*beta*(feq-f[q,i,j]) + (feqf - feq)
         
 
 @njit(parallel=True)
@@ -167,8 +167,6 @@ class NavierStokes2D(object):
         # Initialize population
         self._f = np.zeros((self.Q,self.Nx+2*self.buffersize,self.Ny+2*self.buffersize))
         self.feq = np.zeros((self.Q,self.Nx,self.Ny))
-        #self._feqDu = np.zeros((self.Q,self.Nx,self.Ny))
-        #self.ftemp = np.zeros((self.Q,self.Nx+2*self.buffersize,self.Ny+2*self.buffersize))
         self.rho = np.ones((self.Nx,self.Ny))
         self.u = np.zeros((self.D,self.Nx,self.Ny))
         self.P = np.ones((self.D,self.D,self.Nx,self.Ny))
@@ -195,21 +193,14 @@ class NavierStokes2D(object):
             assert(ux.dtype == np.float64), 'ux is not %s' % np.float64
             self.u[0,:,:] = ux[:,:]
         if uy is not None:
-            assert(uy.dtype == np.float64), 'ux is not %s' % np.float64
+            assert(uy.dtype == np.float64), 'uy is not %s' % np.float64
             self.u[1,:,:] = uy[:,:]            
         
-        # Correct equilibrium
-        #self.correct_feq()
-
         # Initialize population
         self.f[:,:,:] = self.calc_feq_python(self.rho,self.u) #self.feq[:,:,:]
 
         # Correct macroscopic 
         self.correct_macroscopic() # redundant probably
-        #self.correct_macroscopic_python()
-
-    def correct_feq(self):
-        _correct_feq(self.Q,self.W,self.c,self.Nx,self.Ny,self.feq,self.rho,self.u)
 
     def correct_macroscopic(self):
         '''update macroscpic properties: rho, ux, uy, P'''
@@ -225,8 +216,6 @@ class NavierStokes2D(object):
         '''f^{n+1}_i(x) <- f'_i + 2\beta [f^{eq}'_i(x,t) - f'_i(x,t)]'''
         # Correct macroscopic properties: rho, u, P
         self.correct_macroscopic()
-        # Correct feq
-        #self.correct_feq()
         
         if force is not None:
             self.force[:] = force
@@ -234,37 +223,6 @@ class NavierStokes2D(object):
         # Calculate Delta_u due to the external force
         _relax(self.Q,self.W,self.c,self.Nx,self.Ny,self.alpha,self.beta,self.f,self.rho,self.u,self.force)
     
-
-    def calc_feq_python(self,rho,u):
-        '''
-        calc f_eq for a given scalar rho and u
-        '''
-        ux = u[0]
-        uy = u[1]
-        uxsqrt = np.sqrt(1.0 + 3.0*ux**2)
-        uysqrt = np.sqrt(1.0 + 3.0*uy**2)
-        Ax = 2.0 - uxsqrt
-        Ay = 2.0 - uysqrt
-        Bx = (2.0*ux + uxsqrt)/(1.0-ux)
-        By = (2.0*uy + uysqrt)/(1.0-uy)
-        if type(rho) == np.ndarray or type(u) == np.ndarray:
-            feq = np.zeros((self.Q,self.Nx,self.Ny))
-        else:
-            feq = np.zeros(self.Q)
-        for q in range(self.Q):
-            feq[q] = rho*self.W[q]*Ax*Ay*(Bx**self.c[0,q])*(By**self.c[1,q])
-        return feq
-
-        # cu = 2.0 * (u[0]*self.c[0].reshape(-1,1,1) + u[1]*self.c[1].reshape(-1,1,1))
-        # usqr = 3./2.*(u[0]**2 + u[1]**2)
-        # if type(rho) == np.ndarray or type(u) == np.ndarray:
-        #     feq = np.zeros((self.Q,self.Nx,self.Ny))
-        # else:
-        #     feq = np.zeros(self.Q)
-        # for q in range(self.Q):
-        #     feq[q] = rho*self.W[q]*(1.0 + cu[q]+0.5*cu[q]**2 - usqr)
-        # return feq
-
 
     def apply_equilibrium(self,bcdict):
         for bckey,bc in bcdict.iteritems():
@@ -375,34 +333,26 @@ class NavierStokes2D(object):
 
     # ------------------------------------------   
 
-    def correct_macroscopic_python(self):
-        '''update macroscpic properties: rho, ux, uy, P'''
-        self.rho[:,:] = np.sum(self.f,axis=0)
-        self.u[0,:,:] = np.sum(self.f * np.reshape(self.c[0], (self.Q,1,1)), axis=0) / self.rho
-        self.u[1,:,:] = np.sum(self.f * np.reshape(self.c[1], (self.Q,1,1)), axis=0) / self.rho
-        
-
-    def correct_feq_python(self):
-        A = [(2.0 - np.sqrt(1.0 + 3.0*self.u[n]**2)) for n in range(self.D)]
-        B = [((2.0*self.u[n] + np.sqrt(1.0 + 3.0*self.u[n]**2))/(1.0-self.u[n])) for n in range(self.D)]
+    def calc_feq_python(self,rho,u):
+        '''
+        calc f_eq for a given scalar rho and u
+        '''
+        ux = u[0]
+        uy = u[1]
+        uxsqrt = np.sqrt(1.0 + 3.0*ux**2)
+        uysqrt = np.sqrt(1.0 + 3.0*uy**2)
+        Ax = 2.0 - uxsqrt
+        Ay = 2.0 - uysqrt
+        Bx = (2.0*ux + uxsqrt)/(1.0-ux)
+        By = (2.0*uy + uysqrt)/(1.0-uy)
+        if type(rho) == np.ndarray or type(u) == np.ndarray:
+            feq = np.zeros((self.Q,self.Nx,self.Ny))
+        else:
+            feq = np.zeros(self.Q)
         for q in range(self.Q):
-           self.feq[q] = self.rho*self.W[q]*A[0]*A[1]*(B[0]**self.c[0,q])*(B[1]**self.c[1,q])
-        ####
-        # cu = 2.0 * (self.u[0]*self.c[0].reshape(-1,1,1) + self.u[1]*self.c[1].reshape(-1,1,1))
-        # usqr = 3./2.*(self.u[0]**2 + self.u[1]**2)
-        # for q in range(self.Q):
-        #     self.feq[q] = self.rho*self.W[q]*(1.0 + cu[q]+0.5*cu[q]**2-usqr)
+            feq[q] = rho*self.W[q]*Ax*Ay*(Bx**self.c[0,q])*(By**self.c[1,q])
+        return feq
 
-    def relax_python(self):
-        '''f^{n+1}_i(x) <- f'_i + 2\beta [f^{eq}'_i(x,t) - f'_i(x,t)]'''
-        for q in range(self.Q):
-            self.f[q] += self.alpha*self.beta*(self.feq[q]-self.f[q])
-
-    def stream_python(self):
-        '''periodic stream: f'_i(x) <- f^n_i(x-c_i)'''
-        for q in range(1,self.Q):
-            self.f[q] = np.roll(np.roll(self.f[q],self.c[0,q],axis=0),self.c[1,q],axis=1)
-        
     def _calc_alpha(self):
         '''entropic stabilizer'''
         return np.float64(2.0)
@@ -431,9 +381,44 @@ class NavierStokes2D(object):
 
 
 
-
+# --------------------------------------------------------
 # Work in progress part
+
 """
+
+
+
+    def correct_macroscopic_python(self):
+        '''update macroscpic properties: rho, ux, uy, P'''
+        self.rho[:,:] = np.sum(self.f,axis=0)
+        self.u[0,:,:] = np.sum(self.f * np.reshape(self.c[0], (self.Q,1,1)), axis=0) / self.rho
+        self.u[1,:,:] = np.sum(self.f * np.reshape(self.c[1], (self.Q,1,1)), axis=0) / self.rho
+        
+
+    def correct_feq_python(self):
+        # A = [(2.0 - np.sqrt(1.0 + 3.0*self.u[n]**2)) for n in range(self.D)]
+        # B = [((2.0*self.u[n] + np.sqrt(1.0 + 3.0*self.u[n]**2))/(1.0-self.u[n])) for n in range(self.D)]
+        # for q in range(self.Q):
+        #    self.feq[q] = self.rho*self.W[q]*A[0]*A[1]*(B[0]**self.c[0,q])*(B[1]**self.c[1,q])
+        ####
+        #cu = 2.0 * (self.u[0]*self.c[0].reshape(-1,1,1) + self.u[1]*self.c[1].reshape(-1,1,1))
+        #usqr = 3./2.*(self.u[0]**2 + self.u[1]**2)
+        cu = self.u[0]*self.c[0].reshape(-1,1,1) + self.u[1]*self.c[1].reshape(-1,1,1)
+        usqr = self.u[0]**2 + self.u[1]**2
+        for q in range(self.Q):
+            self.feq[q] = self.rho*self.W[q]*(1.0 + 3.0*cu[q] + 4.5*cu[q]**2.0 - 1.5*usqr)
+            #self.feq[q] = self.rho*self.W[q]*(1.0 + cu[q]+0.5*cu[q]**2-usqr)
+
+    def relax_python(self):
+        '''f^{n+1}_i(x) <- f'_i + 2\beta [f^{eq}'_i(x,t) - f'_i(x,t)]'''
+        for q in range(self.Q):
+            self.f[q] += self.alpha*self.beta*(self.feq[q]-self.f[q])
+
+    def stream_python(self):
+        '''periodic stream: f'_i(x) <- f^n_i(x-c_i)'''
+        for q in range(1,self.Q):
+            self.f[q] = np.roll(np.roll(self.f[q],self.c[0,q],axis=0),self.c[1,q],axis=1)
+        
 
 @njit(parallel=True)
 def _H(H,Q,W,Nx,Ny,f):
