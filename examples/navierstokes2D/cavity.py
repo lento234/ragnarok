@@ -110,7 +110,6 @@ for t in range(T):
     #Step 2: Apply bounce-back
     solver.apply_bounceback(left=True,right=True,top=False,bottom=True)
 
-
     # Step 3: Streaming / advection step: f'_i(x) <- f^n_i(x-c_i)
     solver.stream()
 
