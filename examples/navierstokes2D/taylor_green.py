@@ -24,13 +24,13 @@ def calcnorm(ux,uy):
 
 @jit
 def curl(u):
-    dudx,dudy = np.gradient(u[0])
-    dvdx,dvdy = np.gradient(u[1])
+    dudx,dudy = np.gradient(u[0], 1.0/Nx,1.0/Ny)
+    dvdx,dvdy = np.gradient(u[1], 1.0/Nx,1.0/Ny)
     return dvdx - dudy
 
+Vmax = 0.05
+lambdax = lambday = 1.0
 def taylorgreen(t=0.0):
-    lambdax = lambday = 1.0
-    Vmax = 0.05
     Ma = Vmax / cs
 
     Kx = 2.0*np.pi/(lambdax*Nx)
@@ -46,15 +46,14 @@ def taylorgreen(t=0.0):
 # ------------------------------------------------------------
 # Parameters
 Re  = 5000
-T   = 10000
+T   = 20000
 U   = 0.1
 Nx  = 100
 Ny  = 100
 
 # Flags
 apply_bc = True
-plot_step = 1000
-plotSave = False
+plot_step = 20000
 plotFlag = True
 
 # ------------------------------------------------------------
@@ -90,10 +89,11 @@ def plot(i):
     plt.figure('plot')
     plt.clf()
     vortz = curl(solver.u)
-    levels = np.linspace(-0.05,0.05,11)
+    #levels = np.linspace(-5,5,11)
+    levels = np.linspace(-5,5,26)
     plt.title('T = %d' % i)
-    plt.contourf(x,y,vortz/0.05,levels,cmap='RdBu',extend='both')
-    plt.colorbar()
+    plt.contourf(x,y,vortz/Vmax,levels,cmap='RdBu',extend='both')
+    plt.colorbar(ticks=levels[::5])
     skip=5
     plt.quiver(x[::skip,::skip],y[::skip,::skip],ux[::skip,::skip],uy[::skip,::skip],scale=0.7)
     plt.axis('scaled')
@@ -102,10 +102,6 @@ def plot(i):
     plt.ylabel('$y$')
     plt.pause(0.1)
 
-k = 0
-if plotFlag:
-    plot(0)
-    plt.savefig('taylor_green_%04d.png' % 0, dpi=400)
 
 # ------------------------------------------------------------
 # Time stepping 
@@ -120,7 +116,7 @@ for t in range(T+1):
     # Plot
     if plotFlag and t % plot_step == 0:
         plot(t)
-        plt.savefig('taylor_green_%04d.png' % t, dpi=400)
+        plt.savefig('tgv_t%05d.pdf' % t)
 
     # Step 1: Streaming / advection step: f'_i(x) <- f^n_i(x-c_i)
     solver.stream()

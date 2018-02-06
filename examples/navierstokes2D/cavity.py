@@ -28,8 +28,8 @@ def calcnorm(ux,uy):
 
 @jit
 def curl(u):
-    dudx,dudy = np.gradient(u[0])
-    dvdx,dvdy = np.gradient(u[1])
+    dudx,dudy = np.gradient(u[0], 1.0/Nx,1.0/Ny)
+    dvdx,dvdy = np.gradient(u[1], 1.0/Nx,1.0/Ny)
     return dvdx - dudy
 
 # ------------------------------------------------------------
@@ -37,12 +37,12 @@ def curl(u):
 Re  = 1000
 T   = 200000
 U   = 0.1
-Nx  = 250
-Ny  = 250
+Nx  = 200
+Ny  = 200
 
 # Flags
 apply_bc = True
-plot_step = 100
+plot_step = 1000
 
 plotFlag = True
 plotSave = True
@@ -70,40 +70,48 @@ uy = solver.u[1]
 # Setup initial conditions = default rho = 1.0, u = (0, 0)
 solver.initialize()
 
-equilibriumbcdict = {'top': dict(rho=1.0, u=(0.1,0.0))}
+ulid = 0.1
+equilibriumbcdict = {'top': dict(rho=1.0, u=(-ulid,0.0))}
 
 # ------------------------------------------------------------
 # plotting
 
-uxmean = np.zeros(ux.shape)
-uymean = np.zeros(uy.shape)
+# def savemovie(i):
+#     if i==0:
+#         try:
+#             os.mkdir('output')
+#         except:
+#             pass
+#     plt.figure('plot')
+#     plt.clf()
+#     vortz = curl(solver.u)
+#     levels = [-4,-3,-2,-1,0,1,2,3,4,5,6]
+#     plt.title('Vorticity $\omega$, T = %05d' % i)
+#     plt.contourf(x,y,-vortz/(0.1*(1.0/Nx)),levels,cmap='jet',extend='both')
+#     plt.colorbar()
+#     plt.axis('scaled')
+#     plt.xlabel('$x$')
+#     plt.ylabel('$y$')
+#     plt.axis([0,Nx,0,Ny])
+#     if plotSave:
+#         plt.savefig('output/image_%05d.png' % i,dpi=300)
+#     #plt.pause(0.1)
 
-def plotcontourf(i):
+
+def plot(i):
     plt.figure('plot')
     plt.clf()
     vortz = curl(solver.u)
-    levels = [-4,-3,-2,-1,0,1,2,3,4,5,6]
-    plt.title('Vorticity $\omega$, T = %05d' % i)
-    plt.contourf(x,y,-vortz/(0.1*(1.0/Nx)),levels,cmap='jet',extend='both')
-    plt.colorbar()
+    levels = [-3,-2,-1,-0.5, 0, 0.5, 1, 2, 3, 4, 5]
+    plt.contourf(x,y,vortz/ulid,levels,cmap='jet',extend='both')
+    CS = plt.contour(x, y, vortz/ulid, levels, linewidths=0.5, colors='k')
+    plt.clabel(CS, fontsize=6, inline=1)
+    #plt.colorbar()
     plt.axis('scaled')
     plt.xlabel('$x$')
     plt.ylabel('$y$')
     plt.axis([0,Nx,0,Ny])
-    if plotSave:
-        plt.savefig('output/image_%05d.png' % i,dpi=300)
-    #plt.pause(0.1)
-
-
-k = 0
-if plotFlag: 
-    try:
-        os.mkdir('output')
-    except:
-        pass
-    plotcontourf(0)
-
-
+    plt.pause(0.1)
 
 # ------------------------------------------------------------
 # Time stepping 
@@ -115,20 +123,18 @@ for t in range(T):
 
     # Plot
     if plotFlag and t % plot_step == 0:
-        k += 1
-        plotcontourf(k)
-
-    # Step 3: Streaming / advection step: f'_i(x) <- f^n_i(x-c_i)
-    solver.stream()
+        plot(t)
     
+    # Step 1: Apply equilibirum b.c.
     solver.apply_equilibrium(equilibriumbcdict)
 
     #Step 2: Apply bounce-back
     solver.apply_bounceback(left=True,right=True,top=False,bottom=True)
-    
-    # Step 3.5: Apply boundary condition
-    #solver.apply_periodic()
-    
+
+
+    # Step 3: Streaming / advection step: f'_i(x) <- f^n_i(x-c_i)
+    solver.stream()
+
     # Step 4: Relaxation / collision step: f^{n+1}_i(x) <- f'_i + \alpha\beta [f^{eq}'_i(x,t) - f'_i(x,t)]
     solver.relax()
 
