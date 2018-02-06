@@ -12,7 +12,7 @@ pip install -e ragnarok
 
 #### via pip (directly from git repo)
 ```shell
-pip install git+git@github.com:lento234/ragnarok.git
+pip install git+https://github.com/lento234/ragnarok.git
 ```
 
 
