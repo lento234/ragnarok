@@ -35,7 +35,7 @@ def curl(u):
 # ------------------------------------------------------------
 # Parameters
 Re  = 1000
-T   = 200000
+T   = 5000#200000
 U   = 0.1
 Nx  = 200
 Ny  = 200
@@ -76,28 +76,6 @@ equilibriumbcdict = {'top': dict(rho=1.0, u=(-ulid,0.0))}
 # ------------------------------------------------------------
 # plotting
 
-# def savemovie(i):
-#     if i==0:
-#         try:
-#             os.mkdir('output')
-#         except:
-#             pass
-#     plt.figure('plot')
-#     plt.clf()
-#     vortz = curl(solver.u)
-#     levels = [-4,-3,-2,-1,0,1,2,3,4,5,6]
-#     plt.title('Vorticity $\omega$, T = %05d' % i)
-#     plt.contourf(x,y,-vortz/(0.1*(1.0/Nx)),levels,cmap='jet',extend='both')
-#     plt.colorbar()
-#     plt.axis('scaled')
-#     plt.xlabel('$x$')
-#     plt.ylabel('$y$')
-#     plt.axis([0,Nx,0,Ny])
-#     if plotSave:
-#         plt.savefig('output/image_%05d.png' % i,dpi=300)
-#     #plt.pause(0.1)
-
-
 def plot(i):
     plt.figure('plot')
     plt.clf()
@@ -124,6 +102,7 @@ for t in range(T):
     # Plot
     if plotFlag and t % plot_step == 0:
         plot(t)
+        plt.savefig('image_t%05d.png' % (t/plot_step),dpi=300)
     
     # Step 1: Apply equilibirum b.c.
     solver.apply_equilibrium(equilibriumbcdict)
@@ -141,6 +120,8 @@ for t in range(T):
     if solver.rho.min() <= 0.:
         print('Density is negative!')
         break
+
+plt.savefig('ldcf_final.pdf')
 
 # Done
 print('It took %g seconds.' % (time.time()-startTime))
