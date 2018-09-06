@@ -1,9 +1,13 @@
-## RAGNAROK ##
 
- Ragnarok is a library for solving lattice boltzmann method. The code is open-source and developed by Lento Manickathan.
+[![CircleCI](https://circleci.com/gh/lento234/ragnarok.svg?style=svg)](https://circleci.com/gh/lento234/ragnarok)
 
 
-### Installation ###
+## Ragnarok
+
+ Ragnarok is a python library for solving lattice boltzmann method. The code is open-source and developed by Lento Manickathan.
+
+
+### Installation
 
 #### via pip (local)
 ```shell
@@ -16,7 +20,7 @@ pip install git+https://github.com/lento234/ragnarok.git
 ```
 
 
-### Tutorials ###
+### Tutorials
 
 #### 1D : shock-tube flow
 ```shell
@@ -29,7 +33,7 @@ python cavity.py
 ```
 
 
-### Dependencies ###
+### Dependencies
 
 * python 3.7
 * numpy >= 1.13.3
@@ -38,7 +42,7 @@ python cavity.py
 * gr >= 1.0.1 
 
 
-### About  ###
+### About
 
 * Personal homepage: <http://www.manickathan.ch>
 * Lento Manickathan <lento.manickathan@gmail.com>
