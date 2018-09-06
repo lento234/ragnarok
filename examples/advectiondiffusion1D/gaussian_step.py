@@ -66,7 +66,7 @@ for t in range(Tmax):
         startTime = time.time()
     
     # Print time
-    print('T = %d' % t)
+    if (t % (Tmax // 4))  == 0: print('T = %d' % t)
 
     # Plot
     if plot_flag and t % plot_step == 0:

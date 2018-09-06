@@ -41,14 +41,14 @@ def doublyperiodicshearlayer():
 # ------------------------------------------------------------
 # Parameters
 Re  = 30000
-T   = 10000
+T   = 100000
 U   = 0.1
 Nx  = 100
 Ny  = 100
 
 # Flags
 apply_bc = True
-plot_step = 3333
+plot_step = 1000
 plotSave = False
 plotFlag = True
 
@@ -105,7 +105,7 @@ for t in range(T+1):
     # Plot
     if plotFlag and t % plot_step == 0:
         plot(t)
-        plt.savefig('dpsl_t%04d.pdf' % t)
+        if plotSave: plt.savefig('dpsl_t%04d.pdf' % t)
 
     # Step 1: Streaming / advection step: f'_i(x) <- f^n_i(x-c_i)
     solver.stream()

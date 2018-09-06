@@ -45,7 +45,7 @@ apply_bc = True
 plot_step = 1000
 
 plotFlag = True
-plotSave = True
+plotSave = False
 
 # ------------------------------------------------------------
 # Initialize solver
@@ -102,7 +102,7 @@ for t in range(T):
     # Plot
     if plotFlag and t % plot_step == 0:
         plot(t)
-        plt.savefig('image_t%05d.png' % (t/plot_step),dpi=300)
+        if plotSave: plt.savefig('image_t%05d.png' % (t/plot_step),dpi=300)
     
     # Step 1: Apply equilibirum b.c.
     solver.apply_equilibrium(equilibriumbcdict)
@@ -120,7 +120,7 @@ for t in range(T):
         print('Density is negative!')
         break
 
-plt.savefig('ldcf_final.pdf')
+if plotSave: plt.savefig('ldcf_final.pdf')
 
 # Done
 print('It took %g seconds.' % (time.time()-startTime))

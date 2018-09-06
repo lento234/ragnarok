@@ -225,7 +225,7 @@ class NavierStokes2D(object):
     
 
     def apply_equilibrium(self,bcdict):
-        for bckey,bc in bcdict.iteritems():
+        for bckey,bc in bcdict.items():
             feq0 = self.calc_feq_python(bc['rho'],bc['u'])
             istart,iend,jstart,jend = None,None,None,None
             if bckey == 'top':

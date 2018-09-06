@@ -31,8 +31,7 @@ python cavity.py
 
 ### Dependencies ###
 
-* python 2.7.x (sorry :(, will be fixed soon )
-
+* python 3.7
 * numpy >= 1.13.3
 * matplotlib >= 2.1.0
 * numba >= 0.35.0
