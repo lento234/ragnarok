@@ -49,7 +49,7 @@ jobs:
           name: run tests
           command: |
             . venv/bin/activate
-            python examples/advectiondiffusion1D/gaussian_step.py
+            python examples/advectiondiffusion1D/gaussian_step_noplot.py
 
       - store_artifacts:
           path: test-reports
