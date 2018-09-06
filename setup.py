@@ -1,6 +1,6 @@
 
 from distutils.core import setup
-from Cython.Build import cythonize
+#from Cython.Build import cythonize
 import os
 
 setup(
