@@ -1,6 +1,8 @@
 
-[![CircleCI](https://circleci.com/gh/lento234/ragnarok.svg?style=svg)](https://circleci.com/gh/lento234/ragnarok)
+
 [![Build Status](https://travis-ci.com/lento234/ragnarok.svg?branch=master)](https://travis-ci.com/lento234/ragnarok)
+[![CircleCI](https://circleci.com/gh/lento234/ragnarok.svg?style=svg)](https://circleci.com/gh/lento234/ragnarok)
+[![Binder](https://mybinder.org/badge.svg)](https://mybinder.org/v2/gh/lento234/ragnarok/master)
 
 # Ragnarok
 
