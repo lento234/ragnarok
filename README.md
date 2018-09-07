@@ -43,7 +43,8 @@ $ python cavity.py
 
 ## Jupyter notebooks
 
-- Doubly-periodic shear layer [![notebook](https://img.shields.io/badge/launch-Jupyter%20Notebook-ff69b4.svg)](http://nbviewer.jupyter.org/github/lento234/ragnarok/blob/master/examples/navierstokes2D/doublyperiodic_shearlayer.ipynb)
+* 1D Advection-diffusion problem: Gaussian step [![notebook](https://img.shields.io/badge/launch-Jupyter%20Notebook-red.svg)](http://nbviewer.jupyter.org/github/lento234/ragnarok/blob/master/examples/advectiondiffusion1D/gaussian_step.ipynb)
+* 2D Navier-Stokes problem: Doubly-periodic shear layer [![notebook](https://img.shields.io/badge/launch-Jupyter%20Notebook-red.svg)](http://nbviewer.jupyter.org/github/lento234/ragnarok/blob/master/examples/navierstokes2D/doublyperiodic_shearlayer.ipynb)
 
 ## Dependencies
 
