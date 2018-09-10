@@ -1,5 +1,6 @@
 
 
+[![Codacy Badge](https://api.codacy.com/project/badge/Grade/f5a0f780ba7c4755af5910ff359ffe6f)](https://app.codacy.com/app/lento234/ragnarok?utm_source=github.com&utm_medium=referral&utm_content=lento234/ragnarok&utm_campaign=Badge_Grade_Dashboard)
 [![Build Status](https://travis-ci.com/lento234/ragnarok.svg?branch=master)](https://travis-ci.com/lento234/ragnarok)
 [![CircleCI](https://circleci.com/gh/lento234/ragnarok.svg?style=svg)](https://circleci.com/gh/lento234/ragnarok)
 [![Binder](https://mybinder.org/badge.svg)](https://mybinder.org/v2/gh/lento234/ragnarok/master)
