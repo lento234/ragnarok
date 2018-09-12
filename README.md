@@ -7,7 +7,9 @@
 
 # Ragnarok
 
-Ragnarok is a python library for solving lattice boltzmann method. The code is open-source and developed by Lento Manickathan.
+Ragnarok is an open-source python library for solving lattice boltzmann method. 
+
+
 
 <p align="center">
     <img src="https://github.com/lento234/ragnarok/blob/master/media/doublyperiod_shearlayer_animation.gif" width="600" height="400" alt="Doubly-periodic shear-layer" />
@@ -51,6 +53,19 @@ $ python cavity.py
 
 * 1D Advection-diffusion problem: Gaussian step [![notebook](https://img.shields.io/badge/launch-Jupyter%20Notebook-red.svg)](http://nbviewer.jupyter.org/github/lento234/ragnarok/blob/master/examples/advectiondiffusion1D/gaussian_step.ipynb)
 * 2D Navier-Stokes problem: Doubly-periodic shear layer [![notebook](https://img.shields.io/badge/launch-Jupyter%20Notebook-red.svg)](http://nbviewer.jupyter.org/github/lento234/ragnarok/blob/master/examples/navierstokes2D/doublyperiodic_shearlayer.ipynb)
+
+## Features
+
+- [x] 1D advection-diffusion
+- [x] 1D Navier-Stokes
+- [x] 2D Navier-Stokes
+- [x] Numba kernels
+- [ ] CUDA kernels
+- [ ] Entropic LBM
+- [ ] MRT LBM
+- [ ] Multiphase problems
+- [ ] Thermal LBM
+- [ ] GPU Implementation
 
 ## Dependencies
 
