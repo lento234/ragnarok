@@ -65,7 +65,7 @@ $ python cavity.py
 - [ ] MRT LBM
 - [ ] Multiphase problems
 - [ ] Thermal LBM
-- [ ] GPU Implementation
+- [ ] 3D problems
 
 ## Dependencies
 
