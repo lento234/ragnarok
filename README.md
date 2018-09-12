@@ -9,6 +9,11 @@
 
 Ragnarok is a python library for solving lattice boltzmann method. The code is open-source and developed by Lento Manickathan.
 
+<p align="center">
+    <img src="https://github.com/lento234/ragnarok/blob/master/media/doublyperiod_shearlayer_animation.gif" width="600" height="400" alt="Doubly-periodic shear-layer" />
+</p>    
+
+
 ## Installation
 
 via pip (local):
